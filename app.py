@@ -31,6 +31,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
+import uvicorn
 
 #load_dotenv()
 DB_URL = os.environ.get("DATABASE_URL")
