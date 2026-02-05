@@ -14,9 +14,11 @@
 Middleware FastAPI to connect applications to the remote Postgres DB
 
 Run:
-  uv run uvicorn app:app --reload --port 8000
+  #uv run uvicorn app:app --reload --port 8000
+  uv run app.py
 or:
-  uvicorn app:app --reload --port 8000
+  #uvicorn app:app --reload --port 8000
+  python app.py
 
 Env:
   DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:PORT/DBNAME
@@ -32,6 +34,7 @@ from sqlalchemy import create_engine, text
 
 #load_dotenv()
 DB_URL = os.environ.get("DATABASE_URL")
+PORT = os.environ.get("PORT")
 if not DB_URL:
     raise RuntimeError("DATABASE_URL manquant (.env).")
 
@@ -285,3 +288,7 @@ def list_layout_annotations(
       ORDER BY la.created_at DESC
     """, params)
     return rows
+    
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=PORT)
