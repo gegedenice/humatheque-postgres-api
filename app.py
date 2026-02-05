@@ -37,7 +37,7 @@ if not DB_URL:
 
 engine = create_engine(DB_URL, pool_pre_ping=True)
 
-app = FastAPI(title="VLM Eval API", version="0.1.0")
+app = FastAPI(title="Postgres middelware API", version="0.1.0")
 
 
 # -----------------------
