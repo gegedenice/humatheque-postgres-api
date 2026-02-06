@@ -8,5 +8,5 @@ Duplicate .example.env, rename .env and fill with PostgreSQL connexion url.
 
 ```
 docker build -t smartbiblia/humatheque-postgres-api:dev .
-docker run --name humatheque-postgres-api --rm -p 8000:8000 --env-file .env humatheque-postgres-api:dev
+docker run --name humatheque-postgres-api --rm -p 8000:8000 --env-file .env smartbiblia/humatheque-postgres-api:dev
 ```

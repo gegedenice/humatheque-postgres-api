@@ -15,21 +15,28 @@ import uuid
 from typing import Optional, List, Dict, Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends, Security
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
 import uvicorn
 
-#load_dotenv()
 DB_URL = os.environ.get("DATABASE_URL")
-PORT = os.environ.get("PORT")
 if not DB_URL:
     raise RuntimeError("DATABASE_URL manquant (.env).")
+API_KEY = os.environ.get("API_KEY")
+if not API_KEY:
+    raise RuntimeError("API_KEY manquante (.env).")
+PORT = os.environ.get("PORT")
 
 engine = create_engine(DB_URL, pool_pre_ping=True)
 
 app = FastAPI(title="Postgres middelware API", version="0.1.0")
 
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+def require_api_key(api_key: str = Security(api_key_header)) -> None:
+    if not api_key or api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 # -----------------------
 # Pydantic models
@@ -168,7 +175,7 @@ def list_cases(
     return rows
 
 
-@app.post("/cases/upsert", response_model=str)
+@app.post("/cases/upsert", response_model=str, dependencies=[Depends(require_api_key)])
 def upsert_case(payload: CaseUpsertIn):
     params = payload.model_dump()
 
@@ -216,7 +223,7 @@ def list_block_types():
     return rows
 
 
-@app.post("/layout-annotations", response_model=str)
+@app.post("/layout-annotations", response_model=str, dependencies=[Depends(require_api_key)])
 def create_layout_annotation(payload: LayoutAnnotationIn):
     # resolve block_code -> block_type_id
     bt = q_one("""
