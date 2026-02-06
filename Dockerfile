@@ -1,15 +1,23 @@
-# syntax=docker/dockerfile:1
-FROM python:3.11.9-slim
-RUN apt-get update \ 
-    && apt-get install -y locales locales-all \
-    openjdk-17-jdk git curl vim
-ENV LC_ALL fr_FR.UTF-8
-ENV LANG fr_FR.UTF-8
-ENV LANGUAGE fr_FR.UTF-8
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
-COPY . .
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
-VOLUME ["/app"]
-EXPOSE 5000
-CMD [ "gunicorn", "--bind=0.0.0.0:5000", "--timeout=0", "--workers=1", "--threads=4", "wsgi:app"]
+
+# (Optionnal but recommanded) non-root user
+RUN useradd -m appuser
+
+# Python deps
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Code
+COPY . /app
+
+# Port (informative)
+EXPOSE 8000
+
+USER appuser
+
+CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]
