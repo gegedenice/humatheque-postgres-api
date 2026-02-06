@@ -10,6 +10,7 @@ RUN useradd -m appuser
 
 # Python deps
 COPY requirements.txt /app/requirements.txt
+RUN pip install -U pip
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Code
@@ -20,4 +21,4 @@ EXPOSE 8000
 
 USER appuser
 
-CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT:-8000}"]
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-keep-alive 0"]
