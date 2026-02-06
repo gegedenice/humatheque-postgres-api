@@ -2,7 +2,7 @@
 
 1. Env file
 
-Duplicate .example.env, rename .env and fill with PostgreSQL connexion url.
+Duplicate .example.env, rename .env and fill with PostgreSQL connexion url + API KEY
 
 2. Build locally
 
