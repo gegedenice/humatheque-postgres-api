@@ -1,27 +1,14 @@
-#!/usr/bin/env -S uv run
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "fastapi",
-#   "uvicorn",
-#   "sqlalchemy",
-#   "python-dotenv",
-#   "psycopg2-binary",
-#   "pydantic"
-# ]
-# ///
 """
 Middleware FastAPI to connect applications to the remote Postgres DB
 
 Run:
-  #uv run uvicorn app:app --reload --port 8000
-  uv run app.py
-or:
-  #uvicorn app:app --reload --port 8000
   python app.py
+or:
+  uv run app.py
 
 Env:
   DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:PORT/DBNAME
+  PORt=8000
 """
 import os
 import uuid
