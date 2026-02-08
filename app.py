@@ -1,3 +1,15 @@
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "fastapi",
+#   "uvicorn",
+#   "sqlalchemy",
+#   "python-dotenv",
+#   "psycopg2-binary",
+#   "pydantic"
+# ]
+# ///
 """
 Middleware FastAPI to connect applications to the remote Postgres DB
 
@@ -62,6 +74,10 @@ class CaseUpsertIn(BaseModel):
     image_uri: Optional[str] = None
     image_sha256: Optional[str] = None
     notes: Optional[str] = None
+    is_humatheque: Optional[bool] = None
+    collection_code: Optional[str] = None
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
 
 
 class CaseOut(BaseModel):
@@ -76,6 +92,10 @@ class CaseOut(BaseModel):
     image_uri: Optional[str] = None
     image_sha256: Optional[str] = None
     notes: Optional[str] = None
+    is_humatheque: Optional[bool] = None
+    collection_code: Optional[str] = None
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
 
 
 class BlockTypeOut(BaseModel):
@@ -166,7 +186,8 @@ def list_cases(
         SELECT
           case_id::text AS case_id,
           case_name, doc_type, doc_id, page_no::int AS page_no,
-          year, language, source_ref, image_uri, image_sha256, notes
+          year, language, source_ref, image_uri, image_sha256, notes,
+          is_humatheque, collection_code, image_width, image_height
         FROM vlm_eval.cases
         {where_sql}
         ORDER BY created_at DESC
@@ -191,10 +212,12 @@ def upsert_case(payload: CaseUpsertIn):
     sql = """
     INSERT INTO vlm_eval.cases (
       case_id, case_name, doc_type, doc_id, page_no, year, language,
-      source_ref, image_uri, image_sha256, notes
+      source_ref, image_uri, image_sha256, notes,
+      is_humatheque, collection_code, image_width, image_height
     ) VALUES (
       CAST(:case_id AS uuid), :case_name, :doc_type, :doc_id, :page_no, :year, :language,
-      :source_ref, :image_uri, :image_sha256, :notes
+      :source_ref, :image_uri, :image_sha256, :notes,
+      :is_humatheque, :collection_code, :image_width, :image_height
     )
     ON CONFLICT (case_name) DO UPDATE SET
       doc_type    = COALESCE(EXCLUDED.doc_type, vlm_eval.cases.doc_type),
@@ -205,7 +228,11 @@ def upsert_case(payload: CaseUpsertIn):
       source_ref  = COALESCE(EXCLUDED.source_ref, vlm_eval.cases.source_ref),
       image_uri   = COALESCE(EXCLUDED.image_uri,  vlm_eval.cases.image_uri),
       image_sha256= COALESCE(vlm_eval.cases.image_sha256, EXCLUDED.image_sha256),
-      notes       = COALESCE(EXCLUDED.notes, vlm_eval.cases.notes)
+      notes       = COALESCE(EXCLUDED.notes, vlm_eval.cases.notes),
+      is_humatheque    = EXCLUDED.is_humatheque,
+      collection_code  = EXCLUDED.collection_code,
+      image_width      = EXCLUDED.image_width,
+      image_height     = EXCLUDED.image_height
     RETURNING case_id::text;
     """
     with engine.begin() as conn:
