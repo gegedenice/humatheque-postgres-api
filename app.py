@@ -72,12 +72,12 @@ class CaseUpsertIn(BaseModel):
     language: Optional[str] = None
     source_ref: Optional[str] = None
     image_uri: Optional[str] = None
-    image_sha256: Optional[str] = None
-    notes: Optional[str] = None
+    image_sha256: Optional[str] = None    
     is_humatheque: Optional[bool] = None
     collection_code: Optional[str] = None
     image_width: Optional[int] = None
     image_height: Optional[int] = None
+    notes: Optional[str] = None
 
 
 class CaseOut(BaseModel):
@@ -90,12 +90,12 @@ class CaseOut(BaseModel):
     language: Optional[str] = None
     source_ref: Optional[str] = None
     image_uri: Optional[str] = None
-    image_sha256: Optional[str] = None
-    notes: Optional[str] = None
+    image_sha256: Optional[str] = None    
     is_humatheque: Optional[bool] = None
     collection_code: Optional[str] = None
     image_width: Optional[int] = None
     image_height: Optional[int] = None
+    notes: Optional[str] = None
 
 
 class BlockTypeOut(BaseModel):
@@ -186,8 +186,8 @@ def list_cases(
         SELECT
           case_id::text AS case_id,
           case_name, doc_type, doc_id, page_no::int AS page_no,
-          year, language, source_ref, image_uri, image_sha256, notes,
-          is_humatheque, collection_code, image_width, image_height
+          year, language, source_ref, image_uri, image_sha256,
+          is_humatheque, collection_code, image_width, image_height, notes
         FROM vlm_eval.cases
         {where_sql}
         ORDER BY created_at DESC
@@ -212,12 +212,12 @@ def upsert_case(payload: CaseUpsertIn):
     sql = """
     INSERT INTO vlm_eval.cases (
       case_id, case_name, doc_type, doc_id, page_no, year, language,
-      source_ref, image_uri, image_sha256, notes,
-      is_humatheque, collection_code, image_width, image_height
+      source_ref, image_uri, image_sha256,
+      is_humatheque, collection_code, image_width, image_height, notes
     ) VALUES (
       CAST(:case_id AS uuid), :case_name, :doc_type, :doc_id, :page_no, :year, :language,
-      :source_ref, :image_uri, :image_sha256, :notes,
-      :is_humatheque, :collection_code, :image_width, :image_height
+      :source_ref, :image_uri, :image_sha256,
+      :is_humatheque, :collection_code, :image_width, :image_height, :notes
     )
     ON CONFLICT (case_name) DO UPDATE SET
       doc_type    = COALESCE(EXCLUDED.doc_type, vlm_eval.cases.doc_type),
@@ -228,11 +228,11 @@ def upsert_case(payload: CaseUpsertIn):
       source_ref  = COALESCE(EXCLUDED.source_ref, vlm_eval.cases.source_ref),
       image_uri   = COALESCE(EXCLUDED.image_uri,  vlm_eval.cases.image_uri),
       image_sha256= COALESCE(vlm_eval.cases.image_sha256, EXCLUDED.image_sha256),
-      notes       = COALESCE(EXCLUDED.notes, vlm_eval.cases.notes),
-      is_humatheque    = EXCLUDED.is_humatheque,
-      collection_code  = EXCLUDED.collection_code,
-      image_width      = EXCLUDED.image_width,
-      image_height     = EXCLUDED.image_height
+      is_humatheque = COALESCE(EXCLUDED.is_humatheque, vlm_eval.cases.is_humatheque),
+      collection_code = COALESCE(EXCLUDED.collection_code, vlm_eval.cases.collection_code),
+      image_width = COALESCE(EXCLUDED.image_width, vlm_eval.cases.image_width),
+      image_height = COALESCE(EXCLUDED.image_height, vlm_eval.cases.image_height),
+      notes       = COALESCE(EXCLUDED.notes, vlm_eval.cases.notes)
     RETURNING case_id::text;
     """
     with engine.begin() as conn:
