@@ -114,7 +114,6 @@ class LayoutAnnotationIn(BaseModel):
     y2: int
     source: str = "manual"
     confidence: Optional[float] = None
-    annotator: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -129,7 +128,6 @@ class LayoutAnnotationOut(BaseModel):
     y2: int
     source: str
     confidence: Optional[float] = None
-    annotator: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -268,11 +266,11 @@ def create_layout_annotation(payload: LayoutAnnotationIn):
     INSERT INTO vlm_eval.layout_annotations (
       layout_annotation_id, campaign_id, case_id, block_type_id,
       x1, y1, x2, y2,
-      source, confidence, annotator, notes
+      source, confidence, notes
     ) VALUES (
       CAST(:layout_annotation_id AS uuid), CAST(:campaign_id as uuid), CAST(:case_id as uuid), CAST(:block_type_id as uuid),
       :x1, :y1, :x2, :y2,
-      :source, :confidence, :annotator, :notes
+      :source, :confidence, :notes
     )
     RETURNING layout_annotation_id::text;
     """
@@ -303,7 +301,7 @@ def list_layout_annotations(
         la.case_id::text AS case_id,
         bt.code AS block_code,
         la.x1, la.y1, la.x2, la.y2,
-        la.source, la.confidence, la.annotator, la.notes
+        la.source, la.confidence, la.notes
       FROM vlm_eval.layout_annotations la
       JOIN vlm_eval.block_types bt ON bt.block_type_id = la.block_type_id
       WHERE {" AND ".join(where)}
