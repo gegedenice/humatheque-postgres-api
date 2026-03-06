@@ -69,12 +69,12 @@ class CaseUpsertIn(BaseModel):
     doc_id: Optional[str] = None  # ppn
     page_no: Optional[int] = None
     year: Optional[int] = None
-    language: Optional[str] = None
     source_ref: Optional[str] = None
     image_uri: Optional[str] = None
-    image_sha256: Optional[str] = None    
+    image_sha256: Optional[str] = None
     is_humatheque: Optional[bool] = None
     collection_code: Optional[str] = None
+    memoire_type_code: Optional[str] = None
     image_width: Optional[int] = None
     image_height: Optional[int] = None
     notes: Optional[str] = None
@@ -87,12 +87,12 @@ class CaseOut(BaseModel):
     doc_id: Optional[str] = None
     page_no: Optional[int] = None
     year: Optional[int] = None
-    language: Optional[str] = None
     source_ref: Optional[str] = None
     image_uri: Optional[str] = None
-    image_sha256: Optional[str] = None    
+    image_sha256: Optional[str] = None
     is_humatheque: Optional[bool] = None
     collection_code: Optional[str] = None
+    memoire_type_code: Optional[str] = None
     image_width: Optional[int] = None
     image_height: Optional[int] = None
     notes: Optional[str] = None
@@ -184,8 +184,8 @@ def list_cases(
         SELECT
           case_id::text AS case_id,
           case_name, doc_type, doc_id, page_no::int AS page_no,
-          year, language, source_ref, image_uri, image_sha256,
-          is_humatheque, collection_code, image_width, image_height, notes
+          year, source_ref, image_uri, image_sha256,
+          is_humatheque, collection_code, memoire_type_code, image_width, image_height, notes
         FROM vlm_eval.cases
         {where_sql}
         ORDER BY created_at DESC
@@ -194,7 +194,7 @@ def list_cases(
     return rows
 
 
-@app.post("/cases/upsert", response_model=str, dependencies=[Depends(require_api_key)])
+@app.post("/cases/upsert", response_model=str)
 def upsert_case(payload: CaseUpsertIn):
     params = payload.model_dump()
 
@@ -209,25 +209,25 @@ def upsert_case(payload: CaseUpsertIn):
 
     sql = """
     INSERT INTO vlm_eval.cases (
-      case_id, case_name, doc_type, doc_id, page_no, year, language,
+      case_id, case_name, doc_type, doc_id, page_no, year,
       source_ref, image_uri, image_sha256,
-      is_humatheque, collection_code, image_width, image_height, notes
+      is_humatheque, collection_code, memoire_type_code, image_width, image_height, notes
     ) VALUES (
-      CAST(:case_id AS uuid), :case_name, :doc_type, :doc_id, :page_no, :year, :language,
+      CAST(:case_id AS uuid), :case_name, :doc_type, :doc_id, :page_no, :year,
       :source_ref, :image_uri, :image_sha256,
-      :is_humatheque, :collection_code, :image_width, :image_height, :notes
+      :is_humatheque, :collection_code, :memoire_type_code, :image_width, :image_height, :notes
     )
     ON CONFLICT (case_name) DO UPDATE SET
       doc_type    = COALESCE(EXCLUDED.doc_type, vlm_eval.cases.doc_type),
       doc_id      = COALESCE(EXCLUDED.doc_id,   vlm_eval.cases.doc_id),
       page_no     = COALESCE(EXCLUDED.page_no,  vlm_eval.cases.page_no),
       year        = COALESCE(EXCLUDED.year,     vlm_eval.cases.year),
-      language    = COALESCE(EXCLUDED.language, vlm_eval.cases.language),
       source_ref  = COALESCE(EXCLUDED.source_ref, vlm_eval.cases.source_ref),
       image_uri   = COALESCE(EXCLUDED.image_uri,  vlm_eval.cases.image_uri),
       image_sha256= COALESCE(vlm_eval.cases.image_sha256, EXCLUDED.image_sha256),
       is_humatheque = COALESCE(EXCLUDED.is_humatheque, vlm_eval.cases.is_humatheque),
       collection_code = COALESCE(EXCLUDED.collection_code, vlm_eval.cases.collection_code),
+      memoire_type_code = COALESCE(EXCLUDED.memoire_type_code, vlm_eval.cases.memoire_type_code),
       image_width = COALESCE(EXCLUDED.image_width, vlm_eval.cases.image_width),
       image_height = COALESCE(EXCLUDED.image_height, vlm_eval.cases.image_height),
       notes       = COALESCE(EXCLUDED.notes, vlm_eval.cases.notes)
