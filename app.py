@@ -117,6 +117,23 @@ class LayoutAnnotationIn(BaseModel):
     notes: Optional[str] = None
 
 
+class LayoutAnnotationBoxIn(BaseModel):
+    block_code: str  # ex: title, author, jury
+    x1: int
+    y1: int
+    x2: int
+    y2: int
+    source: str = "manual"
+    confidence: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class LayoutAnnotationReplaceIn(BaseModel):
+    campaign_id: str
+    case_id: str
+    annotations: List[LayoutAnnotationBoxIn]
+
+
 class LayoutAnnotationOut(BaseModel):
     layout_annotation_id: str
     campaign_id: str
@@ -248,7 +265,7 @@ def list_block_types():
     return rows
 
 
-@app.post("/layout-annotations", response_model=str, dependencies=[Depends(require_api_key)])
+@app.post("/layout-annotations", response_model=str)
 def create_layout_annotation(payload: LayoutAnnotationIn):
     # resolve block_code -> block_type_id
     bt = q_one("""
@@ -281,6 +298,56 @@ def create_layout_annotation(payload: LayoutAnnotationIn):
     with engine.begin() as conn:
         ann_id = conn.execute(text(sql), params).scalar_one()
     return ann_id
+
+
+@app.post("/layout-annotations/replace", response_model=int)
+def replace_layout_annotations(payload: LayoutAnnotationReplaceIn):
+    with engine.begin() as conn:
+        conn.execute(text("""
+          DELETE FROM vlm_eval.layout_annotations
+          WHERE campaign_id = CAST(:campaign_id as uuid)
+            AND case_id = CAST(:case_id as uuid)
+        """), {
+            "campaign_id": payload.campaign_id,
+            "case_id": payload.case_id,
+        })
+
+        saved = 0
+        for ann in payload.annotations:
+            bt = conn.execute(text("""
+              SELECT block_type_id::text AS id
+              FROM vlm_eval.block_types
+              WHERE code = :code
+            """), {"code": ann.block_code}).mappings().first()
+            if not bt:
+                raise HTTPException(status_code=400, detail=f"Unknown block_code: {ann.block_code}")
+
+            conn.execute(text("""
+              INSERT INTO vlm_eval.layout_annotations (
+                layout_annotation_id, campaign_id, case_id, block_type_id,
+                x1, y1, x2, y2,
+                source, confidence, notes
+              ) VALUES (
+                CAST(:layout_annotation_id AS uuid), CAST(:campaign_id as uuid), CAST(:case_id as uuid), CAST(:block_type_id as uuid),
+                :x1, :y1, :x2, :y2,
+                :source, :confidence, :notes
+              )
+            """), {
+                "layout_annotation_id": str(uuid.uuid4()),
+                "campaign_id": payload.campaign_id,
+                "case_id": payload.case_id,
+                "block_type_id": bt["id"],
+                "x1": ann.x1,
+                "y1": ann.y1,
+                "x2": ann.x2,
+                "y2": ann.y2,
+                "source": ann.source,
+                "confidence": ann.confidence,
+                "notes": ann.notes,
+            })
+            saved += 1
+
+    return saved
 
 
 @app.get("/layout-annotations", response_model=List[LayoutAnnotationOut])
