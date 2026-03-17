@@ -162,6 +162,37 @@ def q_one(sql: str, params: Dict[str, Any] | None = None):
     return row
 
 
+def resolve_existing_case_id(params: Dict[str, Any]) -> Optional[str]:
+    case_id = params.get("case_id")
+    if case_id:
+        existing = q_one(
+            "SELECT case_id::text AS case_id FROM vlm_eval.cases WHERE case_id = CAST(:case_id AS uuid)",
+            {"case_id": case_id},
+        )
+        if existing:
+            return existing["case_id"]
+
+    source_ref = params.get("source_ref")
+    if source_ref:
+        existing = q_one(
+            "SELECT case_id::text AS case_id FROM vlm_eval.cases WHERE source_ref = :source_ref",
+            {"source_ref": source_ref},
+        )
+        if existing:
+            return existing["case_id"]
+
+    image_sha256 = params.get("image_sha256")
+    if image_sha256:
+        existing = q_one(
+            "SELECT case_id::text AS case_id FROM vlm_eval.cases WHERE image_sha256 = :image_sha256",
+            {"image_sha256": image_sha256},
+        )
+        if existing:
+            return existing["case_id"]
+
+    return None
+
+
 # -----------------------
 # Routes
 # -----------------------
@@ -215,14 +246,11 @@ def list_cases(
 def upsert_case(payload: CaseUpsertIn):
     params = payload.model_dump()
 
-    # If case_id is not provided in payload, generate one for new cases.
-    # If case_name already exists, we retrieve its existing case_id.
-    if params["case_id"] is None:
-        existing_case = q_one("SELECT case_id::text FROM vlm_eval.cases WHERE case_name = :case_name", {"case_name": params["case_name"]})
-        if existing_case:
-            params["case_id"] = existing_case["case_id"]
-        else:
-            params["case_id"] = str(uuid.uuid4())
+    existing_case_id = resolve_existing_case_id(params)
+    if existing_case_id:
+        params["case_id"] = existing_case_id
+    elif params["case_id"] is None:
+        params["case_id"] = str(uuid.uuid4())
 
     sql = """
     INSERT INTO vlm_eval.cases (
@@ -234,7 +262,8 @@ def upsert_case(payload: CaseUpsertIn):
       :source_ref, :image_uri, :image_sha256,
       :is_humatheque, :collection_code, :memoire_type_code, :image_width, :image_height, :notes
     )
-    ON CONFLICT (case_name) DO UPDATE SET
+    ON CONFLICT (case_id) DO UPDATE SET
+      case_name   = EXCLUDED.case_name,
       doc_type    = COALESCE(EXCLUDED.doc_type, vlm_eval.cases.doc_type),
       doc_id      = COALESCE(EXCLUDED.doc_id,   vlm_eval.cases.doc_id),
       page_no     = COALESCE(EXCLUDED.page_no,  vlm_eval.cases.page_no),
